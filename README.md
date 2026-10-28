@@ -14,7 +14,7 @@ Tudo roda no navegador: nenhum dado sai do seu computador.
 
 ## Como usar
 
-Abra o `index.html` no navegador, arraste um arquivo `.csv` para a página (ou clique em **Usar exemplo**) e aperte **▶ Ouvir os dados**. Use fones para perceber as duas vozes separadas.
+Baixe o arquivo `index.html` e abra no navegador (é um arquivo só, funciona até offline), arraste um arquivo `.csv` para a página (ou clique em **Usar exemplo**) e aperte **▶ Ouvir os dados**. Use fones para perceber as duas vozes separadas.
 
 O leitor entende os formatos brasileiros: separador `;` ou `,`, decimais com vírgula (`1.234,56`), `R$` e `%`.
 
@@ -22,8 +22,7 @@ O leitor entende os formatos brasileiros: separador `;` ou `,`, decimais com ví
 
 | Arquivo | O que faz |
 |---|---|
-| `index.html` | Interface, gráfico em canvas e síntese de som com Web Audio API |
-| `analise.js` | Leitura de CSV, estatística e o narrador |
+| `index.html` | O programa inteiro: leitura de CSV, estatística, narrador, gráfico em canvas e síntese de som com Web Audio API |
 | `exemplo-cafeteria.csv` | Dados **fictícios** de uma cafeteria (24 meses) |
 
 ## Tecnologias
