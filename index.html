@@ -1,0 +1,343 @@
+<!doctype html>
+<!-- Sinestesia — Copyright (c) 2026 Brunno Barbour Basso. Todos os direitos reservados. -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sinestesia</title>
+<style>
+  :root {
+    --fundo: #0d0b14; --painel: #17142280; --borda: #2c2740; --texto: #ece8f6; --suave: #9b93b5;
+    --a: #7cf2c8; --b: #ff8fd3; --c: #ffd36e; --d: #8fb3ff; --alerta: #ff5c6c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--texto); background: var(--fundo);
+    background-image: radial-gradient(circle at 15% 10%, #2a1f4d 0, transparent 40%),
+                      radial-gradient(circle at 90% 80%, #1d3b3a 0, transparent 35%);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  header h1 { margin: 0; font-size: clamp(32px, 6vw, 54px); letter-spacing: -0.03em; line-height: 1.05; }
+  header h1 span { background: linear-gradient(90deg, var(--a), var(--b), var(--c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { color: var(--suave); max-width: 620px; margin: 10px 0 24px; }
+  .painel { background: var(--painel); border: 1px solid var(--borda); border-radius: 16px; padding: 18px; backdrop-filter: blur(6px); }
+  #entrada { display: grid; place-items: center; text-align: center; border-style: dashed; padding: 34px 18px; cursor: pointer; transition: border-color .2s; }
+  #entrada.arrastando { border-color: var(--a); }
+  #entrada strong { font-size: 17px; }
+  .botoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 14px; }
+  button, select, input[type=range] { font: inherit; }
+  button {
+    border: 1px solid var(--borda); background: #241f36; color: var(--texto); padding: 9px 16px;
+    border-radius: 999px; cursor: pointer; transition: transform .1s, background .2s;
+  }
+  button:hover { background: #2f2847; }
+  button:active { transform: scale(.97); }
+  button.principal { background: var(--a); color: #0d0b14; border-color: var(--a); font-weight: 600; }
+  button.principal:hover { background: #a5f7da; }
+  #erro { color: var(--alerta); margin-top: 10px; min-height: 1em; }
+  #resultado { display: none; margin-top: 22px; gap: 18px; }
+  #resultado.visivel { display: grid; }
+  .controles { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .controles label { color: var(--suave); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  select { background: #241f36; color: var(--texto); border: 1px solid var(--borda); border-radius: 10px; padding: 7px 10px; max-width: 220px; }
+  #grafico { width: 100%; height: 320px; display: block; margin-top: 14px; border-radius: 12px; background: #0f0d18; }
+  #agora { margin-top: 10px; color: var(--suave); font-variant-numeric: tabular-nums; min-height: 1.5em; }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); margin: 0 0 12px; }
+  #narrativa { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  #narrativa li { padding: 10px 12px 10px 40px; border-radius: 10px; background: #1d1830; position: relative; }
+  #narrativa li::before { position: absolute; left: 12px; top: 9px; }
+  #narrativa li[data-tipo=geral]::before { content: "◎"; color: var(--d); }
+  #narrativa li[data-tipo=sobe]::before { content: "↗"; color: var(--a); }
+  #narrativa li[data-tipo=desce]::before { content: "↘"; color: var(--b); }
+  #narrativa li[data-tipo=volatil]::before { content: "≈"; color: var(--c); }
+  #narrativa li[data-tipo=surpresa]::before { content: "!"; color: var(--alerta); font-weight: 700; }
+  #narrativa li[data-tipo=elo]::before { content: "∞"; color: var(--b); }
+  #narrativa li[data-tipo=pico]::before { content: "✦"; color: var(--c); }
+  #narrativa li[data-tipo=aviso]::before { content: "·"; color: var(--suave); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--suave); font-weight: 500; }
+  .rolagem { overflow-x: auto; }
+  #matriz { display: grid; gap: 2px; font-size: 11px; }
+  #matriz div { padding: 6px 4px; text-align: center; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  footer { margin-top: 40px; color: var(--suave); font-size: 13px; text-align: center; }
+  @media (max-width: 600px) { #grafico { height: 240px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sin<span>estesia</span></h1>
+    <p>Um analisador de dados que você <em>escuta</em>. Carregue uma planilha CSV: cada coluna vira uma melodia, os pontos fora da curva viram batidas, e um narrador conta o que os números estão dizendo. Nada sai do seu computador.</p>
+  </header>
+
+  <section id="entrada" class="painel" tabindex="0">
+    <div>
+      <strong>Arraste um arquivo .csv aqui</strong>
+      <div style="color:var(--suave)">ou escolha um arquivo, ou experimente com dados de exemplo</div>
+      <div class="botoes">
+        <button id="escolher" class="principal" type="button">Escolher CSV</button>
+        <button id="exemplo" type="button">Usar exemplo (cafeteria fictícia)</button>
+      </div>
+      <input id="arquivo" type="file" accept=".csv,text/csv,.txt" hidden>
+      <div id="erro" role="alert"></div>
+    </div>
+  </section>
+
+  <section id="resultado">
+    <div class="painel">
+      <div class="controles">
+        <button id="tocar" class="principal" type="button">▶ Ouvir os dados</button>
+        <label>Voz 1 (esquerda) <select id="voz1"></select></label>
+        <label>Voz 2 (direita) <select id="voz2"></select></label>
+        <label>Velocidade <input id="velocidade" type="range" min="2" max="20" value="7"></label>
+      </div>
+      <canvas id="grafico"></canvas>
+      <div id="agora"></div>
+    </div>
+
+    <div class="grade">
+      <div class="painel">
+        <h2>O que os dados dizem</h2>
+        <ul id="narrativa"></ul>
+      </div>
+      <div class="painel">
+        <h2>Como as colunas se relacionam</h2>
+        <div id="matriz"></div>
+      </div>
+    </div>
+
+    <div class="painel">
+      <h2>Resumo estatístico</h2>
+      <div class="rolagem"><table id="tabela"></table></div>
+    </div>
+  </section>
+
+  <footer>Sinestesia · © 2026 Brunno Barbour Basso · Todos os direitos reservados</footer>
+</main>
+
+<script src="analise.js"></script>
+<script>
+(() => {
+  "use strict";
+  const S = window.Sinestesia;
+  const $ = (id) => document.getElementById(id);
+  const CORES = ["#7cf2c8", "#ff8fd3", "#ffd36e", "#8fb3ff", "#c49bff", "#ff9f6e"];
+  let analise = null, tocando = null;
+
+  // ---------- Entrada ----------
+  const entrada = $("entrada");
+  $("escolher").onclick = (e) => { e.stopPropagation(); $("arquivo").click(); };
+  entrada.onclick = () => $("arquivo").click();
+  $("exemplo").onclick = (e) => { e.stopPropagation(); carregar(S.exemploCafeteria()); };
+  $("arquivo").onchange = (e) => e.target.files[0] && lerArquivo(e.target.files[0]);
+  entrada.ondragover = (e) => { e.preventDefault(); entrada.classList.add("arrastando"); };
+  entrada.ondragleave = () => entrada.classList.remove("arrastando");
+  entrada.ondrop = (e) => {
+    e.preventDefault(); entrada.classList.remove("arrastando");
+    if (e.dataTransfer.files[0]) lerArquivo(e.dataTransfer.files[0]);
+  };
+
+  function lerArquivo(f) {
+    const r = new FileReader();
+    r.onload = () => carregar(r.result);
+    r.readAsText(f, "utf-8");
+  }
+
+  function carregar(texto) {
+    $("erro").textContent = "";
+    parar();
+    try {
+      analise = S.analisar(S.lerCSV(texto));
+      if (!analise.colunas.length) throw new Error("Não encontrei nenhuma coluna numérica para analisar.");
+    } catch (err) {
+      $("erro").textContent = err.message; $("resultado").classList.remove("visivel"); return;
+    }
+    montarSeletores(); mostrarNarrativa(); mostrarTabela(); mostrarMatriz();
+    $("resultado").classList.add("visivel");
+    desenhar(-1);
+    $("resultado").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ---------- Painéis ----------
+  function montarSeletores() {
+    const opcoes = analise.colunas.map((c, i) => `<option value="${i}">${esc(c.nome)}</option>`).join("");
+    $("voz1").innerHTML = opcoes;
+    $("voz2").innerHTML = `<option value="-1">(nenhuma)</option>` + opcoes;
+    $("voz1").value = 0;
+    $("voz2").value = analise.colunas.length > 1 ? 1 : -1;
+  }
+  $("voz1").onchange = $("voz2").onchange = () => { parar(); desenhar(-1); };
+
+  function mostrarNarrativa() {
+    $("narrativa").innerHTML = S.narrar(analise).map((f) => `<li data-tipo="${f.tipo}">${esc(f.texto)}</li>`).join("");
+  }
+
+  function mostrarTabela() {
+    const f = S.fmt;
+    $("tabela").innerHTML =
+      `<tr><th>Coluna</th><th>Média</th><th>Mediana</th><th>Desvio</th><th>Mín</th><th>Máx</th><th>Fora da curva</th></tr>` +
+      analise.colunas.map((c) =>
+        `<tr><td>${esc(c.nome)}</td><td>${f(c.media)}</td><td>${f(c.mediana)}</td><td>${f(c.desvio)}</td><td>${f(c.min)}</td><td>${f(c.max)}</td><td>${c.foraDaCurva.length}</td></tr>`
+      ).join("");
+  }
+
+  function mostrarMatriz() {
+    const cols = analise.colunas, n = cols.length, m = $("matriz");
+    if (n < 2) { m.innerHTML = `<p style="color:var(--suave)">É preciso pelo menos duas colunas numéricas.</p>`; return; }
+    const r = (a, b) => a === b ? 1 : (analise.correlacoes.find((k) => (k.a === cols[a].nome && k.b === cols[b].nome) || (k.a === cols[b].nome && k.b === cols[a].nome))?.r ?? NaN);
+    m.style.gridTemplateColumns = `minmax(70px, 1.3fr) repeat(${n}, 1fr)`;
+    let html = "<div></div>" + cols.map((c) => `<div title="${esc(c.nome)}" style="color:var(--suave)">${esc(c.nome)}</div>`).join("");
+    for (let i = 0; i < n; i++) {
+      html += `<div title="${esc(cols[i].nome)}" style="text-align:left;color:var(--suave)">${esc(cols[i].nome)}</div>`;
+      for (let j = 0; j < n; j++) {
+        const v = r(i, j), a = Number.isNaN(v) ? 0 : Math.abs(v);
+        const cor = v >= 0 ? `rgba(124,242,200,${a * 0.85})` : `rgba(255,143,211,${a * 0.85})`;
+        html += `<div style="background:${cor};color:${a > 0.55 ? "#0d0b14" : "var(--texto)"}">${Number.isNaN(v) ? "—" : S.fmt(v)}</div>`;
+      }
+    }
+    m.innerHTML = html + `<div style="grid-column:1/-1;text-align:left;color:var(--suave);padding-top:8px">Verde: sobem juntas · Rosa: uma sobe, a outra cai</div>`;
+  }
+
+  // ---------- Gráfico ----------
+  function vozes() {
+    return [+$("voz1").value, +$("voz2").value].filter((i) => i >= 0).filter((v, i, a) => a.indexOf(v) === i);
+  }
+
+  function desenhar(posicao) {
+    const cv = $("grafico"), dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth, H = cv.clientHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+    const pad = { e: 14, d: 14, t: 18, b: 28 }, n = analise.linhas;
+    const x = (i) => pad.e + (n === 1 ? 0.5 : i / (n - 1)) * (W - pad.e - pad.d);
+
+    g.strokeStyle = "#221d33"; g.lineWidth = 1;
+    for (let k = 0; k <= 4; k++) { const y = pad.t + (k / 4) * (H - pad.t - pad.b); g.beginPath(); g.moveTo(pad.e, y); g.lineTo(W - pad.d, y); g.stroke(); }
+
+    g.fillStyle = "#6f6889"; g.font = "11px system-ui"; g.textAlign = "center";
+    const passo = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(W / 80))));
+    for (let i = 0; i < n; i += passo) g.fillText(String(analise.rotulo[i]).slice(0, 12), x(i), H - 9);
+
+    vozes().forEach((ci, k) => {
+      const c = analise.colunas[ci], cor = CORES[ci % CORES.length];
+      const y = (v) => pad.t + (1 - (c.max === c.min ? 0.5 : (v - c.min) / (c.max - c.min))) * (H - pad.t - pad.b);
+      g.strokeStyle = cor; g.lineWidth = 2.2; g.setLineDash(k ? [6, 4] : []); g.beginPath();
+      let ligado = false;
+      c.valores.forEach((v, i) => {
+        if (Number.isNaN(v)) { ligado = false; return; }
+        ligado ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)); ligado = true;
+      });
+      g.stroke(); g.setLineDash([]);
+      for (const o of c.foraDaCurva) {
+        g.fillStyle = "#ff5c6c"; g.beginPath(); g.arc(x(o.indice), y(o.valor), 5, 0, Math.PI * 2); g.fill();
+      }
+      if (posicao >= 0 && !Number.isNaN(c.valores[posicao])) {
+        g.fillStyle = cor; g.shadowColor = cor; g.shadowBlur = 16;
+        g.beginPath(); g.arc(x(posicao), y(c.valores[posicao]), 7, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+      }
+    });
+
+    if (posicao >= 0) {
+      g.strokeStyle = "#ffffff55"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x(posicao), pad.t); g.lineTo(x(posicao), H - pad.b); g.stroke();
+    }
+  }
+  window.addEventListener("resize", () => analise && desenhar(tocando ? tocando.pos : -1));
+
+  // ---------- Som ----------
+  // Escala pentatônica em 3 oitavas: qualquer sequência de valores soa melódica.
+  const ESCALA = [];
+  for (let o = 0; o < 3; o++) for (const s of [0, 3, 5, 7, 10]) ESCALA.push(146.83 * 2 ** ((o * 12 + s) / 12));
+  ESCALA.push(146.83 * 8);
+
+  let audio = null;
+  function ruidoBuffer(ctx) {
+    const b = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 3;
+    return b;
+  }
+
+  function nota(ctx, destino, t, freq, dur, tipo, pan) {
+    const o = ctx.createOscillator(), gn = ctx.createGain(), p = ctx.createStereoPanner();
+    o.type = tipo; o.frequency.value = freq; p.pan.value = pan;
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(0.22, t + 0.015);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(gn).connect(p).connect(destino); o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  function batida(ctx, destino, t, pan) {
+    const s = ctx.createBufferSource(), gn = ctx.createGain(), p = ctx.createStereoPanner(), f = ctx.createBiquadFilter();
+    s.buffer = audio.ruido; f.type = "bandpass"; f.frequency.value = 1800; gn.gain.value = 0.9; p.pan.value = pan;
+    s.connect(f).connect(gn).connect(p).connect(destino); s.start(t);
+    const k = ctx.createOscillator(), kg = ctx.createGain();
+    k.frequency.setValueAtTime(150, t); k.frequency.exponentialRampToValueAtTime(40, t + 0.2);
+    kg.gain.setValueAtTime(0.7, t); kg.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    k.connect(kg).connect(destino); k.start(t); k.stop(t + 0.3);
+  }
+
+  function tocar() {
+    if (tocando) return parar();
+    if (!audio) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const mestre = ctx.createDynamicsCompressor(); mestre.connect(ctx.destination);
+      audio = { ctx, mestre, ruido: ruidoBuffer(ctx) };
+    }
+    const { ctx } = audio;
+    ctx.resume();
+    const saida = ctx.createGain(); saida.connect(audio.mestre);
+    const v = vozes(), n = analise.linhas;
+    const passo = 1 / +$("velocidade").value, inicio = ctx.currentTime + 0.1;
+    const panos = v.length > 1 ? [-0.7, 0.7] : [0];
+    const tipos = ["triangle", "sine"];
+    v.forEach((ci, k) => {
+      const c = analise.colunas[ci];
+      const fora = new Set(c.foraDaCurva.map((o) => o.indice));
+      c.valores.forEach((val, i) => {
+        if (Number.isNaN(val)) return;
+        const t = inicio + i * passo;
+        const norm = c.max === c.min ? 0.5 : (val - c.min) / (c.max - c.min);
+        nota(ctx, saida, t, ESCALA[Math.round(norm * (ESCALA.length - 1))], Math.min(0.9, passo * 1.6), tipos[k], panos[k]);
+        if (fora.has(i)) batida(ctx, saida, t, panos[k]);
+      });
+    });
+    tocando = { saida, inicio, passo, pos: -1, fim: inicio + n * passo };
+    $("tocar").textContent = "■ Parar";
+    const quadro = () => {
+      if (!tocando) return;
+      const pos = Math.floor((ctx.currentTime - tocando.inicio) / tocando.passo);
+      if (ctx.currentTime >= tocando.fim) return parar();
+      if (pos !== tocando.pos && pos >= 0) {
+        tocando.pos = pos; desenhar(pos);
+        $("agora").innerHTML = `<strong>${esc(String(analise.rotulo[pos]))}</strong> · ` +
+          v.map((ci) => { const c = analise.colunas[ci]; return `${esc(c.nome)}: ${S.fmt(c.valores[pos])}`; }).join(" · ");
+      }
+      requestAnimationFrame(quadro);
+    };
+    requestAnimationFrame(quadro);
+  }
+
+  function parar() {
+    if (!tocando) return;
+    const { saida } = tocando, ctx = audio.ctx;
+    saida.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    setTimeout(() => saida.disconnect(), 300);
+    tocando = null;
+    $("tocar").textContent = "▶ Ouvir os dados";
+    $("agora").textContent = "";
+    if (analise) desenhar(-1);
+  }
+  $("tocar").onclick = tocar;
+  $("velocidade").oninput = () => tocando && (parar(), tocar());
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+})();
+</script>
+</body>
+</html>
